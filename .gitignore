@@ -1,0 +1,8 @@
+/Release/
+*.project
+*.classpath
+*.settings
+*.gradle
+bkp/
+bin/
+build/
