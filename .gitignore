@@ -3,6 +3,8 @@
 *.classpath
 *.settings
 *.gradle
+*.properties
+*.csv
 bkp/
 bin/
 build/
