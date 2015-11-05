@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -42,6 +43,11 @@ public class DataFactory
 	@Value("${site.admin.username}")
 	private String siteAdminUsername;
 
+	@Value("${site.admin.email}")
+	private String siteAdminEmail;
+
+	@Value("${site.server.name}")
+	private String siteServername;
 
 	// ----------------------------------------------------------------------------------------------------------------------
 	protected static Logger logger = LoggerFactory.getLogger(DataFactory.class);
@@ -81,6 +87,18 @@ public class DataFactory
 	public String getSiteAdminUsername()
 	{
 		return siteAdminUsername;
+	}
+
+	// ----------------------------------------------------------------------------------------------------------------------
+	public String getSiteAdminEmail()
+	{
+		return siteAdminEmail;
+	}
+
+	// ----------------------------------------------------------------------------------------------------------------------
+	public String getSiteServerName()
+	{
+		return siteServername;
 	}
 
 	// ----------------------------------------------------------------------------------------------------------------------
@@ -130,9 +148,12 @@ public class DataFactory
 			info.setTagline(splittedLine[3]);
 
 			// static properties
+			info.setDbName(buildDbName(info.getDomain()));
 			info.setDbUsername(getSiteDbUsername());
 			info.setDbPassword(getSiteDbPassword());
 			info.setAdminUsername(getSiteAdminUsername());
+			info.setAdminEmail(getSiteAdminEmail());
+			info.setSiteLink(getSiteLink(info.getDomain()));
 
 			parsedData.add(info);
 		}
@@ -149,11 +170,17 @@ public class DataFactory
 			String pathToFile = resource.getURI().getRawPath();
 			logger.debug("Start writing to:" + pathToFile);
 			FileWriter writer = new FileWriter(pathToFile, true);
-			writer.append(siteInfo.getDomain());
+			writer.append(LocalDate.now().toString()).append(";");
+			writer.append(siteInfo.getDomain()).append(";");
+			writer.append(siteInfo.getAdminUsername()).append(";");
+			writer.append(siteInfo.getAdminPassword()).append(";");
+			writer.append(getSiteServerName()).append(";");
+			writer.append(siteInfo.getDbName()).append(";");
+			writer.append(siteInfo.getDbUsername()).append(";");
+			writer.append(siteInfo.getDbPassword()).append(";");
 			writer.append(";");
-			writer.append(siteInfo.getAdminPassword());
-			writer.append(";");
-			writer.append(siteInfo.getCronUrl());
+			writer.append(siteInfo.getCronUrl()).append(";");
+			writer.append(siteInfo.getSiteLink()).append(";");
 			writer.append("\n");
 			writer.flush();
 			writer.close();
@@ -163,5 +190,23 @@ public class DataFactory
 		{
 			logger.debug("Error witing to file", e.getMessage());
 		}
+	}
+
+	// ----------------------------------------------------------------------------------------------------------------------
+	private String buildDbName(String domain)
+	{
+		String dbName = "admin_" + StringUtils.replaceChars(domain, ".", "_");
+		return dbName;
+	}
+
+
+	// ----------------------------------------------------------------------------------------------------------------------
+	private String getSiteLink(String domain)
+	{
+		StringBuffer siteLink = new StringBuffer();
+		siteLink.append("<a href=\"http://www.");
+		siteLink.append(domain);
+		siteLink.append("\">HTML</a>");
+		return siteLink.toString();
 	}
 }

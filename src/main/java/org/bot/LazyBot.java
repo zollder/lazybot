@@ -28,7 +28,7 @@ public class LazyBot extends Application
 	private List<String> keywords;
 	private List<SiteInfo> siteData;
 	private List<SiteInfo> siteInfoList;
-	private static List<String> availableParsers = Arrays.asList("Google Web Search","Text Ask","Text Avg","Text Bing","Text Google","Text Lycos","Text Mail","Text Meta","Text Nigma","Text Ru Yahoo","Text Ukr","User Parser Text Rambler","Bing","Google","Qip","Rambler","Ru Ask","Ru Yahoo","Ukr","Yahoo");
+	private static List<String> availableParsers = Arrays.asList("Google Web Search","Text Ask","Text Avg","Text Bing","Text Google","Text Lycos","Text Mail","Text Meta","Text Ru Yahoo","Text Ukr","User Parser Text Rambler","Bing","Google","Qip","Rambler","Ru Ask","Ru Yahoo","Ukr","Yahoo");
 
 	private static WebDriver driver;
 
@@ -61,6 +61,7 @@ public class LazyBot extends Application
 		List<String> inputData = dataFactory.getData(dataFactory.getInputDataResource());
 		siteData = dataFactory.getSiteData(inputData);
 
+//		addSitesToPanel(siteData);
 
 		// 10 lines max now
 		siteInfoList = new ArrayList<>();
@@ -71,12 +72,9 @@ public class LazyBot extends Application
 //			List<String> keys = keywords.subList(startIndex, endIndex-1);
 			startIndex = startIndex + range;
 			endIndex = endIndex + range;
-//			SiteInfo updatedSiteInfo = create(siteInfo);
-			// TODO: move to SiteInfo
-//			updatedSiteInfo.setSiteLink(getSiteLink(updatedSiteInfo.getDomain()));
-//
-//			siteInfoList.add(updatedSiteInfo);
-//			dataFactory.saveSiteData(updatedSiteInfo);
+			SiteInfo updatedSiteInfo = create(siteInfo);
+			siteInfoList.add(updatedSiteInfo);
+			dataFactory.saveSiteData(updatedSiteInfo);
 		}
 
         stop(primaryStage);
@@ -101,9 +99,8 @@ public class LazyBot extends Application
 	private static SiteInfo create(SiteInfo siteInfo)
 	{
 		String domain = siteInfo.getDomain();
-		String adminBaseUrl = "http://" + domain + "/wp-admin";
+		String adminBaseUrl = "http://www." + domain + "/wp-admin";
 		String siteName = siteInfo.getSiteName();
-		siteInfo.setDbName(getDbName(domain));
 
 		driver = new FirefoxDriver();
 		JavascriptExecutor executor = (JavascriptExecutor) driver;
@@ -129,7 +126,6 @@ public class LazyBot extends Application
 		driver.findElement(By.id("weblog_title")).sendKeys(siteName);
 		driver.findElement(By.id("user_login")).clear();
 		driver.findElement(By.id("user_login")).sendKeys(siteInfo.getAdminUsername());
-		delay(5);
 		String sitePassword = driver.findElement(By.id("pass1")).getAttribute("data-pw");
 		siteInfo.setAdminPassword(sitePassword);
 		logger.debug("Site password: " + sitePassword);
@@ -145,7 +141,7 @@ public class LazyBot extends Application
 
 		// Login
 		driver.findElement(By.id("user_login")).sendKeys(siteInfo.getAdminUsername());
-//		driver.findElement(By.id("user_pass")).sendKeys(")@N3@9eDj04VfmY3AT");
+//		driver.findElement(By.id("user_pass")).sendKeys("o)bq)&Gxix4K1vglyd");
 		driver.findElement(By.id("user_pass")).sendKeys(siteInfo.getAdminPassword());
 		driver.findElement(By.id("wp-submit")).click();
 
@@ -178,6 +174,10 @@ public class LazyBot extends Application
 		driver.findElement(By.id("term_meta_post_pattern")).clear();
 		driver.findElement(By.id("term_meta_post_pattern")).sendKeys(getPostTemplate());
 		driver.findElement(By.id("submit")).click();
+
+		// Delete default page
+		driver.get(adminBaseUrl + "/post.php?post=2&action=edit");
+		driver.findElement(By.id("delete-action")).click();
 
 		// Appearance - activate "ReFresh" theme
 		driver.get(adminBaseUrl + "/themes.php");
@@ -261,7 +261,6 @@ public class LazyBot extends Application
 		delay(2);
 		siteInfo.setNewCronSecret(driver.findElement(By.id("spanChangeSecretWord")).getText());
 		siteInfo.setCronUrl(getCronUrl(siteInfo.getNewCronSecret(), siteInfo.getDomain()));
-//		logger.debug(siteInfo.getNewCronSecret());
 		logger.debug(siteInfo.getCronUrl());
 
 		delay(2);
@@ -281,26 +280,14 @@ public class LazyBot extends Application
 		/*driver.findElement(By.cssSelector(".btn.btn-success.btn-sm.pull-right.text-uppercase.checkAllParsers")).click();*/
 		/*Float parserTime = Float.valueOf(StringUtils.trimToEmpty(parserElements.get(3).getText()).substring(0, 4));*/
 		driver.get(adminBaseUrl + "/admin.php?page=wordpresed_parsers");
-		delay(3);
-		// must be improved
+		delay(1);
 		List<WebElement> textParsers = driver.findElement(By.id("text-parsers-table")).findElement(By.tagName("tbody")).findElements(By.tagName("tr"));
 		for (WebElement parser : textParsers) {
 			List<WebElement> parserElements = parser.findElements(By.tagName("td"));
 			String parserName = StringUtils.trimToEmpty(parserElements.get(1).getText());
-			parserElements.get(0).click();
-			if (availableParsers.contains(parserName))
+			if (availableParsers.contains(parserName)) {
 				parserElements.get(0).click();
-/*			String parserLang = StringUtils.trimToEmpty(parserElements.get(2).getText().toLowerCase());
-			if (parserName.contains("Text") && (parserLang.toLowerCase().contains("ru") || parserLang.toLowerCase().contains("ua")))
-				parserElements.get(0).click();
-			if (parserName.equals("Google")||
-					parserName.equals("Bing") ||
-					parserName.equals("Lycos") ||
-					parserName.equals("Qip") ||
-					parserName.equals("Ru Ask") ||
-					parserName.equals("Ru Yahoo") ||
-					parserName.equals("Rambler"))
-*/
+			}
 		}
 		driver.findElement(By.id("saveSelectionsForPars")).click();
 		delay(2);
@@ -346,12 +333,37 @@ public class LazyBot extends Application
 	}
 
 	// ----------------------------------------------------------------------------------------------------------------------
-	private static String getDbName(String domain)
+	//
+	// ----------------------------------------------------------------------------------------------------------------------
+	private static void addSitesToPanel(List<SiteInfo> sites)
 	{
-		String dbName = "admin_" + StringUtils.replaceChars(domain, ".", "_");
-		logger.debug("Database name: " + dbName);
-		return dbName;
+		driver = new FirefoxDriver();
+		JavascriptExecutor executor = (JavascriptExecutor) driver;
+		driver.manage().window().maximize();
+
+		driver.get("https://46.165.249.203:8083/login/");
+		driver.findElement(By.className("user")).clear();
+		driver.findElement(By.className("user")).sendKeys("admin");
+		driver.findElement(By.className("password")).clear();
+		driver.findElement(By.className("password")).sendKeys("0Dq4PKAMn9");
+		String vestaPanelName = "https://46.165.249.203:8083/add/web/";
+		driver.get(vestaPanelName);
+
+		for (SiteInfo site : sites) {
+			driver.findElement(By.id("v_domain")).clear();
+			driver.findElement(By.id("v_domain")).sendKeys(site.getDomain());
+			WebElement checkBox = driver.findElement(By.className("v_mail"));
+			if (checkBox.getAttribute("checked").equals("yes")) {
+				checkBox.click();
+			}
+			driver.findElement(By.cssSelector("input.button")).click();
+			delay(1);
+		}
+
+		driver.close();
 	}
+	// ----------------------------------------------------------------------------------------------------------------------
+
 
 	// ----------------------------------------------------------------------------------------------------------------------
 	private static String getPostTemplate()
@@ -457,15 +469,6 @@ public class LazyBot extends Application
 		}
 	}
 
-	// ----------------------------------------------------------------------------------------------------------------------
-	private static String getSiteLink(String domain)
-	{
-		StringBuffer siteLink = new StringBuffer();
-		siteLink.append("<a href=\"http://www.");
-		siteLink.append(domain);
-		siteLink.append("\">HTML</a>");
-		return siteLink.toString();
-	}
 
 	private static String getOutDataString(SiteInfo siteInfo)
 	{
