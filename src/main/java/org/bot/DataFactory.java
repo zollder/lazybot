@@ -9,6 +9,10 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -99,6 +103,48 @@ public class DataFactory
 	public String getSiteServerName()
 	{
 		return siteServername;
+	}
+
+	// ----------------------------------------------------------------------------------------------------------------------
+	public void insertKeywords(List<String> keywords, String dbName) throws SQLException
+	{
+		Connection connection = ConnectionObject.getConnection(dbName);
+
+		// clean the table before insert
+		connection.setAutoCommit(false);
+		Statement statement = connection.createStatement();
+		logger.info(String.format("Cleaning up %s database", dbName));
+		statement.execute("delete from wp_wpsed_keywords");
+		connection.commit();
+
+		String insertQuery = "insert into wp_wpsed_keywords values (?,?,?,?,?,?,?,?,?)";
+		connection.setAutoCommit(false);
+		PreparedStatement preparedStatement = connection.prepareStatement(insertQuery);
+		Long id = Long.valueOf(0);
+		for (String keyword : keywords)
+		{
+			preparedStatement.setLong(1, id++);
+			preparedStatement.setString(2, keyword);
+			preparedStatement.setInt(3, 1);
+			preparedStatement.setInt(4, 0);
+			preparedStatement.setInt(5, 0);
+			preparedStatement.setInt(6, 0);
+			preparedStatement.setInt(7, 0);
+			preparedStatement.setInt(8, 1);
+			preparedStatement.setString(9, "");
+			preparedStatement.addBatch();
+		}
+
+		logger.info(String.format("Inserting %s keywords into %s database", keywords.size(), dbName));
+		int[] result = preparedStatement.executeBatch();
+		connection.commit();
+		logger.info("Inserted keywords: " + result.length);
+
+		if (preparedStatement != null)
+			preparedStatement.close();
+
+		if (connection != null)
+			connection.close();
 	}
 
 	// ----------------------------------------------------------------------------------------------------------------------

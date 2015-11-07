@@ -1,8 +1,8 @@
 package org.bot;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -25,7 +25,6 @@ public class LazyBot extends Application
 	private static AnnotationConfigApplicationContext appContext;
 
 	private DataFactory dataFactory;
-	private List<String> keywords;
 	private List<SiteInfo> siteData;
 	private List<SiteInfo> siteInfoList;
 	private static List<String> availableParsers = Arrays.asList("Google Web Search","Text Ask","Text Avg","Text Bing","Text Google","Text Lycos","Text Mail","Text Meta","Text Ru Yahoo","Text Ukr","User Parser Text Rambler","Bing","Google","Qip","Rambler","Ru Ask","Ru Yahoo","Ukr","Yahoo");
@@ -42,7 +41,7 @@ public class LazyBot extends Application
 
 	// ----------------------------------------------------------------------------------------------------------------------
 	@Override
-	public void start(Stage primaryStage)
+	public void start(Stage primaryStage) throws SQLException
 	{
 		appContext = new AnnotationConfigApplicationContext(SpringApplicationConfig.class);
 		dataFactory = appContext.getBean(DataFactory.class);
@@ -50,31 +49,30 @@ public class LazyBot extends Application
 		logger.debug("Application started.");
 
 		// retrieve keywords
-		keywords = dataFactory.getData(dataFactory.getKeywordsResource());
-		Collections.shuffle(keywords);
-		logger.debug("Keywords: " + keywords.size());
-		int startIndex = 0;
-		int endIndex = 99;
-		int range = 100;
+//		logger.debug("Importing and shuffling keywords ...");
+//		List<String> keywords = dataFactory.getData(dataFactory.getKeywordsResource());
+//		Collections.shuffle(keywords);
+//		logger.debug("Imported and shuffled " + keywords.size() + " keywords");
+//		int startIndex = 0; int endIndex = 9999; int range = 10000;
 
 		// retrieve site data
 		List<String> inputData = dataFactory.getData(dataFactory.getInputDataResource());
 		siteData = dataFactory.getSiteData(inputData);
-
-//		addSitesToPanel(siteData);
 
 		// 10 lines max now
 		siteInfoList = new ArrayList<>();
 		for (SiteInfo siteInfo : siteData)
 		{
 			logger.info(getOutDataString(siteInfo));
-			siteInfo.setKeysAsString(getDomainKeys(keywords.subList(startIndex, endIndex)));
-//			List<String> keys = keywords.subList(startIndex, endIndex-1);
-			startIndex = startIndex + range;
-			endIndex = endIndex + range;
+
 			SiteInfo updatedSiteInfo = create(siteInfo);
 			siteInfoList.add(updatedSiteInfo);
 			dataFactory.saveSiteData(updatedSiteInfo);
+
+			// insert keys
+//			dataFactory.insertKeywords(keywords.subList(startIndex, endIndex), siteInfo.getDbName());
+//			startIndex = startIndex + range;
+//			endIndex = endIndex + range;
 		}
 
         stop(primaryStage);
@@ -267,7 +265,7 @@ public class LazyBot extends Application
 		driver.get(adminBaseUrl + "/admin.php?page=wordpresed_keywords");
 		driver.findElement(By.id("addNewKeywordsButton")).click();
 		driver.findElement(By.id("addFromTextField")).clear();
-		driver.findElement(By.id("addFromTextField")).sendKeys(siteInfo.getKeysAsString());
+		driver.findElement(By.id("addFromTextField")).sendKeys("dummy key");
 		driver.findElement(By.cssSelector(".btn.dropdown-toggle.selectpicker.btn-default")).click();
 		driver.findElement(By.cssSelector(".dropdown-menu.inner.selectpicker")).findElement(By.className("level-0")).click();
 		driver.findElement(By.id("createKeysOK")).click();

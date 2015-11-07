@@ -20,4 +20,5 @@ public class SpringApplicationConfig
     {
         return new PropertySourcesPlaceholderConfigurer();
     }
+
 }
